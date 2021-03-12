@@ -1,0 +1,102 @@
+version: "3.7"
+services:
+  source-db1:
+    image: postgres:10.7
+    environment:
+      POSTGRES_USER: experiment
+      POSTGRES_PASSWORD: experiment
+    # Configure Postgres replication slot. Alternatively, this can be done via postgresql.conf
+    # https://debezium.io/documentation/reference/1.0/connectors/postgresql.html#server-configuration
+    command: postgres -c wal_level=logical -c max_wal_senders=10 -c max_replication_slots=10
+    volumes:
+      - ./setup_source_db1.sql:/docker-entrypoint-initdb.d/setup_source_db1.sql
+      # TODO: configuration for var/lib/postgresql/data/pg_hba.conf
+      # https://debezium.io/documentation/reference/1.0/connectors/postgresql.html#PostgreSQL-permissions
+    expose:
+      - "5432"
+    # ports:
+    #   - "5432:5432"
+    networks:
+      - default
+  source-db2:
+    image: postgres:10.7
+    environment:
+      POSTGRES_USER: experiment
+      POSTGRES_PASSWORD: experiment
+    # Configure Postgres replication slot. Alternatively, this can be done via postgresql.conf
+    # https://debezium.io/documentation/reference/1.0/connectors/postgresql.html#server-configuration
+    command: postgres -c wal_level=logical -c max_wal_senders=10 -c max_replication_slots=10
+    volumes:
+      - ./setup_source_db2.sql:/docker-entrypoint-initdb.d/setup_source_db2.sql
+      # TODO: configuration for var/lib/postgresql/data/pg_hba.conf
+      # https://debezium.io/documentation/reference/1.0/connectors/postgresql.html#PostgreSQL-permissions
+    expose:
+      - "5432"
+    # ports:
+    #   - "5433:5433"
+    networks:
+      - default
+  sink-db1:
+    image: postgres:10.7
+    environment:
+      POSTGRES_USER: experiment
+      POSTGRES_PASSWORD: experiment
+    command: postgres
+    volumes:
+      - ./setup_sink_db1.sql:/docker-entrypoint-initdb.d/setup_sink_db1.sql
+    expose:
+      - "5432"
+    # ports:
+    #   - "5434:5434"
+    networks:
+      - default
+  sql-client:
+    build: ./client-image
+    # image: demo/debezium-flink-sql
+    depends_on:
+      # - kafka
+      - jobmanager
+      # - elasticsearch
+    environment:
+      FLINK_JOBMANAGER_HOST: jobmanager
+      # ZOOKEEPER_CONNECT: zookeeper
+      # KAFKA_BOOTSTRAP: kafka
+      # ES_HOST: elasticsearch
+  jobmanager:
+    image: flink:1.12.1-scala_2.11
+    ports:
+      - "8081:8081"
+    command: jobmanager
+    environment:
+      - JOB_MANAGER_RPC_ADDRESS=jobmanager
+  taskmanager:
+    image: flink:1.12.1-scala_2.11
+    depends_on:
+      - jobmanager
+    command: taskmanager
+    environment:
+      - JOB_MANAGER_RPC_ADDRESS=jobmanager
+      - TASK_MANAGER_NUMBER_OF_TASK_SLOTS=3
+  # elasticsearch:
+  #   image: docker.elastic.co/elasticsearch/elasticsearch:7.6.0
+  #   environment:
+  #     - cluster.name=docker-cluster
+  #     - bootstrap.memory_lock=true
+  #     - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+  #     - discovery.type=single-node
+  #   ports:
+  #     - "9200:9200"
+  #     - "9300:9300"
+  #   ulimits:
+  #     memlock:
+  #       soft: -1
+  #       hard: -1
+  #     nofile:
+  #       soft: 65536
+  #       hard: 65536
+  # kibana:
+  #   image: docker.elastic.co/kibana/kibana:7.6.0
+  #   ports:
+  #     - "5601:5601"
+networks:
+  default: {}
