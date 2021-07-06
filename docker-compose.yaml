@@ -57,6 +57,11 @@ services:
       # - kafka
       - jobmanager
       # - elasticsearch
+
+    # To use a local build of flink-cdc-connectors, uncomment the below
+    # Also remove the old flink-sql-connector-postgres-cdc jar file from /opt/sql-client/lib/
+    # volumes:
+    #   - /path/to/build/of/flink-cdc-connectors/flink-connector-postgres-cdc/target/flink-connector-postgres-cdc-1.4-SNAPSHOT.jar:/opt/sql-client/lib/flink-connector-postgres-cdc-1.4-SNAPSHOT.jar
     environment:
       FLINK_JOBMANAGER_HOST: jobmanager
       # ZOOKEEPER_CONNECT: zookeeper
